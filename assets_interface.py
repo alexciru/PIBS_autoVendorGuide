@@ -33,7 +33,8 @@ class AtlassianAssetsAPI:
     # Object Queries
     # -----------------------------
     def get_object_ids(self, aql_query: str, start: int = 0, max_results: int = 1000):
-        """Retrieve object IDs matching an AQL query."""
+        """Retrieve object IDs matching an AQL query. It returns a dictionary with object IDs as keys and
+           object data as values."""
         if not self.base_url:
             raise ValueError("Workspace not initialized. Call get_workspace_id() first.")
         body = {"qlQuery": aql_query}
@@ -41,19 +42,57 @@ class AtlassianAssetsAPI:
         resp = requests.post(url, headers=self.headers, data=json.dumps(body))
         resp.raise_for_status()
         data = resp.json()
-        return [obj["id"] for obj in data.get("values", [])]
-
+        return {obj["id"]: obj for obj in data.get("values", [])}
     # -----------------------------
     # Object Details
     # -----------------------------
     def get_object(self, object_id: str):
-        """Retrieve full object details."""
+        """Retrieve full object details.
+                obj = {
+            "workspaceId": "c1e8a849-...",
+            "id": "316",
+            "objectTypeAttributeId": "316",
+            "objectAttributeValues": [
+                {"displayValue": "PIB-135", "value": "PIB-135"}
+            ]
+        }"""
         url = f"{self.base_url}/v1/object/{object_id}"
         resp = requests.get(url, headers=self.headers)
         resp.raise_for_status()
-        
+
         return resp.json()
 
+
+
+    def attributes_to_dict(self, data):
+        """
+        Convert the attributes list into a dictionary where:
+        - Key: attribute name
+        - Value: objectAttributeValues list
+        """
+        attributes_dict = {}
+        
+        for attr in data['attributes']:
+            attr_name = attr['objectTypeAttribute']['name']
+            attr_values = attr['objectAttributeValues']
+            attributes_dict[attr_name] = attr_values
+        
+        return attributes_dict
+
+
+    def get_list_to_dict(self, data):
+        """
+        Convert the attributes list into a dictionary where:
+        - Key: attribute name
+        - Value: objectAttributeValues list
+        """
+        data_dict = {}
+        for attr in data:
+            attr_name = attr['name']
+            attr_values = attr['objectAttributeValues']
+            data_dict[attr_name] = attr_values
+
+        return data_dict
     # -----------------------------
     # Object Attributes
     # -----------------------------
@@ -116,7 +155,6 @@ if __name__ == "__main__":
     object_ids = api.get_object_ids("objectTypeId = 40")
     print(f"Found {len(object_ids)} objects of type 40.")
     # get the pib number from the object id
-    print("Object ID:", object_ids[0])
     for id in object_ids:
         attributes = api.get_object_attributes(id)
         if(attributes["PiB"].endswith(pib_number)):
@@ -125,10 +163,10 @@ if __name__ == "__main__":
         
     # Retrieve a specific object
     obj_data = api.get_object(object_id)
+    print(obj_data)
     print(f"Object ID: {obj_data['id']}, Name: {obj_data['name']}")
     # Retrieve its attributes
     attributes = api.get_object_attributes(object_id)
-    print(f"Attributes for object {object_id}: {attributes}")
     # Retrieve all attributes of object type 40
     all_attrs = api.get_object_type_attributes(40)
-    print(f"Attributes for object type 40: {all_attrs}")
+    #print(f"Attributes for object type 40: {all_attrs}")

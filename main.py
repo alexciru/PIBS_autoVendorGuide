@@ -3,7 +3,9 @@ from docx.shared import Inches
 from assets_interface import AtlassianAssetsAPI
 from docx import Document
 from docx.shared import Inches
+from assets_interface import AtlassianAssetsAPI
 import os
+from dotenv import load_dotenv
 
 def replace_text_in_paragraphs(paragraphs, replacements):
     """
@@ -99,20 +101,80 @@ def get_pib_information(pib_number):
 ################################################################################
 
 if __name__ == "__main__":
+    load_dotenv(".env")  # Load environment variables from .env file
     template_path = "PiB Vendor guide T560 - ALEX_template.docx"
     output_path = "output.docx"
-
+    PiB_Number = "138"
     # Example usage
+
+
+    api = AtlassianAssetsAPI(
+        email=os.getenv("ATLANTSIA_EMAIL"),     # Replace with your Atlassian email
+        api_token=os.getenv("ATLANTSIA_API_TOKEN"),  # Replace with your Atlassian API token
+        domain=os.getenv("ATLANTSIA_DOMAIN"),  # Replace with your Atlassian domain
+    )
+
+    api.get_workspace_id()
+    # GET ALL THE PIBS
+    object_dicc = api.get_object_ids("objectTypeId = 40")
+    # get the pib number from the object id
+    for id in object_dicc.keys():
+        attributes = api.get_object_attributes(id)
+        if(attributes["PiB"].endswith(PiB_Number)):
+            object_id = id
+            break
+
+    pib_data = api.get_object(object_id)
+    
+    print(f"Object ID: {pib_data['id']}, Name: {pib_data['name']}")
+    
+
+
+    obj_dic = api.attributes_to_dict(pib_data)
+    teltonika_dicc = obj_dic["Teltonika"][0]
+    teltonika_id = teltonika_dicc['referencedObject']['id']
+    print(f"Teltonika reference: {teltonika_dicc['referencedObject']}")
+
+    teltonika_obj = api.get_object(teltonika_id)
+    teltonika_attr = api.attributes_to_dict(teltonika_obj)
+    print("-------")
+    print("-------")
+    print("-------")
+    print("-------")
+    #print(teltonika_attr["WiFi SSID"])
+    #print(teltonika_attr["Status"])
+    #print(teltonika_attr["WiFi Password"])
+    
+    print(print(list(teltonika_attr.keys())))
+    print(teltonika_attr["Model"][0]["displayValue"])
+    print(teltonika_attr["WiFi SSID"][0]["displayValue"])
+    print(teltonika_attr["WiFi Password"][0]["displayValue"])
+
+    #print(f"Teltonika dictionary: {teltonika_dicc}")
+    #print(f"Teltonika: {teltonika_dicc['id']}")
+    #print(f"Teltonika: {teltonika_dicc['model']}")
+    #print(f"Teltonika: {teltonika_dicc['WiFi SSID']}")
+    #print(f"Teltonika: {teltonika_dicc['WiFi Password']}")
+    
+
+
+    # Retrieved 
+
+    # Retrieve its attributes
+    pib_atrb = api.get_object_attributes(object_id)
+    teltonika_dicc = api.get_object_attributes(teltonika_id)
+    print(teltonika_dicc)
+    
+    # Retrieve its attributes
     replacements = {
-        "<NAME>": "Alex",
-        "<DATE>": "18-08-2025",
-        "<PROJECT>": "VLM Enhancement",
-        "<PIB_NUMBER>": "157",
-        "<CLIENT_NAME>": "PharmaCorp AG",
-        "<LOC>": "USBL",
-        "<AREA>": "AP1",
-        "<WIFI_SSID>": "WIFFI_ROUTER_BLABLA",
-        "<WIFI_PASSWORD>": "FAFDAFsas23465465365GA!lkfadSA",
+        "<PIB_NUMBER>": PiB_Number,
+        "<CLIENT_NAME>": pib_atrb["Vendor"],
+        "<LOC>": pib_atrb["Location"],
+        "<AREA>": pib_atrb["Area"],
+        "<TELTONIKA>": pib_atrb["Teltonika"],
+        "<MODEL>": teltonika_dicc["Model"],
+        "<WIFI_SSID>": teltonika_dicc["WiFi SSID"],
+        "<WIFI_PASSWORD>": teltonika_dicc["WiFi Password"]
     }
 
     image_replacements = {
